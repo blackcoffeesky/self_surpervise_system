@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Activity Tracker A++</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    max-width: 520px;
+    margin: auto;
+}
+
+h2 { text-align:center; }
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0;
+    font-size: 16px;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    font-size: 16px;
+}
+
+.current {
+    padding: 12px;
+    background: #f2f2f2;
+    margin: 12px 0;
+}
+
+.smallBtn { background:#eee; }
+.danger { background:#ffdddd; }
+
+.statBox { margin-top:25px; }
+
+.modal {
+    position: fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background: rgba(0,0,0,0.4);
+    display:none;
+    justify-content:center;
+    align-items:center;
+}
+
+.modalContent {
+    background:white;
+    padding:20px;
+    width:80%;
+    border-radius:10px;
+    text-align:center;
+}
+
+.modalContent button {
+    width:100%;
+}
+</style>
+</head>
+<body>
+
+<h2>活动记录系统 A++</h2>
+
+<div class="current" id="currentStatus">
+当前无活动
+</div>
+
+<label>选择主题：</label>
+<select id="subthemeSelect">
+<option value="">--选择--</option>
+<option>嵌入式与机器视觉</option>
+<option>考研准备</option>
+<option>完善监督系统</option>
+<option>强化学习&毕业设计</option>
+<option>运动</option>
+<option>投资</option>
+<option>反思&记录&总结</option>
+</select>
+
+<button onclick="startActivity()">开始活动</button>
+<button onclick="endActivity()">结束活动</button>
+<button onclick="switchActivity()">切换活动</button>
+
+<button onclick="clearCurrent()" class="smallBtn">清除当前活动</button>
+<button onclick="clearAll()" class="danger">清空所有数据</button>
+<button onclick="exportData()">导出数据</button>
+
+<div class="statBox">
+<h3>统计</h3>
+<p id="todayStat">今日总时长：0 分钟</p>
+<p id="totalStat">累计总时长：0 分钟</p>
+<canvas id="dailyChart"></canvas>
+</div>
+
+<!-- 效率弹窗 -->
+<div class="modal" id="effModal">
+<div class="modalContent">
+<h3>选择效率</h3>
+<button onclick="selectEfficiency(0)">低</button>
+<button onclick="selectEfficiency(1)">偏低</button>
+<button onclick="selectEfficiency(2)">正常</button>
+<button onclick="selectEfficiency(3)">高</button>
+<button onclick="selectEfficiency(4)">极高</button>
+<button onclick="selectEfficiency(5)">无</button>
+</div>
+</div>
+
+<script>
+let currentActivity = JSON.parse(localStorage.getItem("currentActivity"));
+let records = JSON.parse(localStorage.getItem("records")) || [];
+
+let pendingAction = null;
+
+function saveState(){
+    localStorage.setItem("currentActivity", JSON.stringify(currentActivity));
+    localStorage.setItem("records", JSON.stringify(records));
+}
+
+function formatTime(date){
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    const h = String(date.getHours()).padStart(2,'0');
+    const min = String(date.getMinutes()).padStart(2,'0');
+    return `${y}-${m}-${d} ${h}:${min}`;
+}
+
+function parseTime(str){
+    return new Date(str.replace(" ","T"));
+}
+
+function updateStatus(){
+    const div = document.getElementById("currentStatus");
+    if(currentActivity){
+        div.innerText = "当前活动: " + currentActivity.theme +
+        "\n开始时间: " + currentActivity.startTime;
+    }else{
+        div.innerText = "当前无活动";
+    }
+}
+
+function startActivity(){
+    if(currentActivity){
+        alert("已有进行中的活动");
+        return;
+    }
+
+    const theme = document.getElementById("subthemeSelect").value;
+    if(!theme){
+        alert("请选择主题");
+        return;
+    }
+
+    currentActivity = {
+        theme: theme,
+        startTime: formatTime(new Date())
+    };
+
+    saveState();
+    updateStatus();
+}
+
+function endActivity(){
+    if(!currentActivity){
+        alert("当前无活动");
+        return;
+    }
+    pendingAction = "end";
+    openModal();
+}
+
+function switchActivity(){
+    const newTheme = document.getElementById("subthemeSelect").value;
+    if(!newTheme){
+        alert("请选择新主题");
+        return;
+    }
+
+    if(!currentActivity){
+        startActivity();
+        return;
+    }
+
+    pendingAction = { type:"switch", newTheme:newTheme };
+    openModal();
+}
+
+function openModal(){
+    document.getElementById("effModal").style.display="flex";
+}
+
+function closeModal(){
+    document.getElementById("effModal").style.display="none";
+}
+
+function selectEfficiency(value){
+    closeModal();
+
+    const endTime = new Date();
+    const startTime = parseTime(currentActivity.startTime);
+    const durationMin = (endTime - startTime)/60000;
+
+    records.push({
+        theme: currentActivity.theme,
+        startTime: currentActivity.startTime,
+        endTime: formatTime(endTime),
+        duration: durationMin,
+        efficiency: value
+    });
+
+    if(pendingAction === "end"){
+        currentActivity = null;
+    }else if(pendingAction.type === "switch"){
+        currentActivity = {
+            theme: pendingAction.newTheme,
+            startTime: formatTime(new Date())
+        };
+    }
+
+    pendingAction = null;
+    saveState();
+    updateStatus();
+    updateStats();
+}
+
+function clearCurrent(){
+    if(confirm("确定清除当前活动？")){
+        currentActivity = null;
+        saveState();
+        updateStatus();
+    }
+}
+
+function clearAll(){
+    if(confirm("⚠ 清空所有数据？不可恢复")){
+        records = [];
+        currentActivity = null;
+        saveState();
+        updateStatus();
+        updateStats();
+    }
+}
+
+function exportData(){
+    const exportData = {
+        version:"2.0",
+        export_time: formatTime(new Date()),
+        records: records
+    };
+
+    const blob = new Blob(
+        [JSON.stringify(exportData,null,2)],
+        {type:"application/json"}
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href=url;
+    a.download="activity_export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function updateStats(){
+    let today = new Date().toDateString();
+    let todaySum = 0;
+    let totalSum = 0;
+    let dailyMap = {};
+
+    records.forEach(r=>{
+        let date = new Date(r.startTime);
+        let dayStr = date.toDateString();
+
+        totalSum += r.duration;
+        if(dayStr === today){
+            todaySum += r.duration;
+        }
+
+        if(!dailyMap[dayStr]) dailyMap[dayStr]=0;
+        dailyMap[dayStr]+=r.duration;
+    });
+
+    document.getElementById("todayStat").innerText =
+    "今日总时长：" + todaySum.toFixed(1) + " 分钟";
+
+    document.getElementById("totalStat").innerText =
+    "累计总时长：" + totalSum.toFixed(1) + " 分钟";
+
+    drawChart(dailyMap);
+}
+
+let chart;
+
+function drawChart(dailyMap){
+    const ctx = document.getElementById("dailyChart");
+
+    let labels = Object.keys(dailyMap);
+    let data = Object.values(dailyMap);
+
+    if(chart) chart.destroy();
+
+    chart = new Chart(ctx,{
+        type:'bar',
+        data:{
+            labels:labels,
+            datasets:[{
+                label:'每日总分钟',
+                data:data
+            }]
+        },
+        options:{
+            responsive:true,
+            scales:{ y:{ beginAtZero:true } }
+        }
+    });
+}
+
+updateStatus();
+updateStats();
+</script>
+
+</body>
+</html>

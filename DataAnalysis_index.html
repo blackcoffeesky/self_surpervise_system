@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Activity SQLite Dashboard v3 - 优化版</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+/* 图表容器优化 */
+.chart-container {
+    margin-top: 25px;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.chart-title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+.chart-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8f9fa;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+.control-group label {
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.control-group input[type="range"] {
+    width: 100px;
+    height: 4px;
+    border-radius: 2px;
+    background: #dee2e6;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4f46e5;
+    cursor: pointer;
+    transition: 0.1s;
+}
+
+.control-group input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    background: #4338ca;
+}
+
+.control-value {
+    min-width: 45px;
+    text-align: right;
+    color: #4f46e5;
+    font-weight: 500;
+}
+
+/* 画布固定高度 - 优化版 */
+canvas {
+    width: 100% !important;
+    height: 280px !important;  /* 固定高度，防止过长 */
+    display: block;
+    border-radius: 8px;
+}
+
+/* 小屏幕适配 */
+@media (max-width: 768px) {
+    canvas {
+        height: 220px !important;
+    }
+    
+    .chart-controls {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+
+.infoBox {
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+.infoBox p {
+    margin: 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #495057;
+}
+
+.filterBox {
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filterBox input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+button {
+    padding: 8px 20px;
+    background: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #4338ca;
+}
+
+.global-controls {
+    margin: 20px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 30px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.global-controls label {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: #495057;
+}
+
+.global-controls input[type="range"] {
+    width: 150px;
+}
+
+.reset-btn {
+    background: #6c757d;
+}
+
+.reset-btn:hover {
+    background: #5a6268;
+}
+
+input[type="file"] {
+    padding: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    width: 100%;
+    max-width: 400px;
+}
+
+</style>
+</head>
+<body>
+
+<h2>📊 Activity SQLite 数据分析面板 v3 - 优化版</h2>
+
+<input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
+
+<div class="filterBox">
+    <span style="font-weight: 500;">📅 时间范围：</span>
+    <input type="date" id="startDate">
+    <span>—</span>
+    <input type="date" id="endDate">
+    <button onclick="renderDashboard()">🔄 更新图表</button>
+</div>
+
+<!-- 全局图表大小控制 - 优化版 -->
+<div class="global-controls">
+    <span style="font-weight: 500;">📏 全局调整：</span>
+    <label>
+        高度
+        <input type="range" id="globalHeight" min="180" max="400" value="280" step="10">
+        <span id="globalHeightValue" class="control-value">280px</span>
+    </label>
+    <label>
+        宽度
+        <input type="range" id="globalWidth" min="70" max="100" value="100" step="5">
+        <span id="globalWidthValue" class="control-value">100%</span>
+    </label>
+    <button class="reset-btn" onclick="resetChartSizes()">↺ 重置默认</button>
+</div>
+
+<div class="infoBox" id="statsContainer">
+    <p id="startDateInfo">记录开始日期: -</p>
+    <p id="totalDaysInfo">记录总天数: -</p>
+    <p id="totalRecordsInfo">记录条数: -</p>
+    <p id="totalDurationInfo">累计总分钟: -</p>
+    <p id="avgPerDayInfo">平均每日分钟: -</p>
+</div>
+
+<!-- 主题持续时间折线图 -->
+<div class="chart-container">
+    <div class="chart-header">
+        <span class="chart-title">📈 主题持续时间趋势</span>
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>📏 高 <input type="range" class="chart-height" data-chart="themeDurationLine" min="180" max="400" value="280" step="10"></label>
+                <span class="control-value" id="height-themeDurationLine">280px</span>
+            </div>
+            <div class="control-group">
+                <label>📐 宽 <input type="range" class="chart-width" data-chart="themeDurationLine" min="70" max="100" value="100" step="5"></label>
+                <span class="control-value" id="width-themeDurationLine">100%</span>
+            </div>
+        </div>
+    </div>
+    <canvas id="themeDurationLine"></canvas>
+</div>
+
+<!-- 效率趋势折线图 -->
+<div class="chart-container">
+    <div class="chart-header">
+        <span class="chart-title">📊 每日平均效率趋势</span>
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>📏 高 <input type="range" class="chart-height" data-chart="efficiencyLine" min="180" max="400" value="280" step="10"></label>
+                <span class="control-value" id="height-efficiencyLine">280px</span>
+            </div>
+            <div class="control-group">
+                <label>📐 宽 <input type="range" class="chart-width" data-chart="efficiencyLine" min="70" max="100" value="100" step="5"></label>
+                <span class="control-value" id="width-efficiencyLine">100%</span>
+            </div>
+        </div>
+    </div>
+    <canvas id="efficiencyLine"></canvas>
+</div>
+
+<!-- 主题占比饼图 -->
+<div class="chart-container">
+    <div class="chart-header">
+        <span class="chart-title">🥧 主题时间占比</span>
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>📏 高 <input type="range" class="chart-height" data-chart="themePie" min="180" max="400" value="280" step="10"></label>
+                <span class="control-value" id="height-themePie">280px</span>
+            </div>
+            <div class="control-group">
+                <label>📐 宽 <input type="range" class="chart-width" data-chart="themePie" min="70" max="100" value="100" step="5"></label>
+                <span class="control-value" id="width-themePie">100%</span>
+            </div>
+        </div>
+    </div>
+    <canvas id="themePie"></canvas>
+</div>
+
+<!-- 效率分布柱状图 -->
+<div class="chart-container">
+    <div class="chart-header">
+        <span class="chart-title">📊 效率分布柱状图</span>
+        <div class="chart-controls">
+            <div class="control-group">
+                <label>📏 高 <input type="range" class="chart-height" data-chart="efficiencyBar" min="180" max="400" value="280" step="10"></label>
+                <span class="control-value" id="height-efficiencyBar">280px</span>
+            </div>
+            <div class="control-group">
+                <label>📐 宽 <input type="range" class="chart-width" data-chart="efficiencyBar" min="70" max="100" value="100" step="5"></label>
+                <span class="control-value" id="width-efficiencyBar">100%</span>
+            </div>
+        </div>
+    </div>
+    <canvas id="efficiencyBar"></canvas>
+</div>
+
+<script>
+let db;
+let charts = {};
+let resizeTimeout;
+let lastRenderTime = 0;
+
+// 优化SQL.js初始化
+initSqlJs({
+    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+}).then(SQL => {
+    window.SQL = SQL;
+    document.getElementById("dbFile").addEventListener("change", handleFileUpload);
+});
+
+function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    
+    reader.onload = function() {
+        try {
+            const uInt8Array = new Uint8Array(reader.result);
+            db = new SQL.Database(uInt8Array);
+            
+            // 验证数据库是否包含必要的表
+            const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity', 'SubTheme')");
+            if (tables.length < 2) {
+                alert('数据库文件格式不正确，需要包含 Activity 和 SubTheme 表');
+                return;
+            }
+            
+            initDateRange();
+            initSizeControls();
+            renderDashboard();
+        } catch (error) {
+            alert('加载数据库文件失败：' + error.message);
+        }
+    };
+    
+    reader.readAsArrayBuffer(file);
+}
+
+function initDateRange() {
+    try {
+        const res = db.exec(`
+            SELECT 
+            MIN(start_time),
+            MAX(start_time)
+            FROM Activity
+        `);
+        
+        if (res.length === 0 || !res[0].values[0][0]) return;
+        
+        const min = res[0].values[0][0].slice(0, 10);
+        const max = res[0].values[0][1].slice(0, 10);
+        
+        document.getElementById("startDate").value = min;
+        document.getElementById("endDate").value = max;
+    } catch (error) {
+        console.error('初始化日期范围失败：', error);
+    }
+}
+
+function initSizeControls() {
+    // 使用节流函数优化滑块性能
+    const throttleResize = (callback) => {
+        return (e) => {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => callback(e), 16); // 约60fps
+        };
+    };
+    
+    // 单个图表高度控制
+    document.querySelectorAll('.chart-height').forEach(slider => {
+        slider.addEventListener('input', throttleResize(function() {
+            const chartId = this.dataset.chart;
+            const height = this.value;
+            document.getElementById(`height-${chartId}`).textContent = height + 'px';
+            
+            // 只更新CSS，不重新渲染图表
+            const canvas = document.getElementById(chartId);
+            canvas.style.height = height + 'px';
+            
+            // 延迟更新图表，避免频繁重绘
+            if (charts[chartId]) {
+                if (this.resizeTimer) clearTimeout(this.resizeTimer);
+                this.resizeTimer = setTimeout(() => {
+                    charts[chartId].resize();
+                }, 50);
+            }
+        }));
+    });
+    
+    // 单个图表宽度控制
+    document.querySelectorAll('.chart-width').forEach(slider => {
+        slider.addEventListener('input', throttleResize(function() {
+            const chartId = this.dataset.chart;
+            const width = this.value;
+            document.getElementById(`width-${chartId}`).textContent = width + '%';
+            
+            const canvas = document.getElementById(chartId);
+            canvas.style.width = width + '%';
+            
+            if (charts[chartId]) {
+                if (this.resizeTimer) clearTimeout(this.resizeTimer);
+                this.resizeTimer = setTimeout(() => {
+                    charts[chartId].resize();
+                }, 50);
+            }
+        }));
+    });
+    
+    // 全局高度控制
+    document.getElementById('globalHeight').addEventListener('input', throttleResize(function() {
+        const height = this.value;
+        document.getElementById('globalHeightValue').textContent = height + 'px';
+        
+        document.querySelectorAll('.chart-height').forEach(slider => {
+            slider.value = height;
+            const chartId = slider.dataset.chart;
+            document.getElementById(`height-${chartId}`).textContent = height + 'px';
+            
+            const canvas = document.getElementById(chartId);
+            canvas.style.height = height + 'px';
+            
+            if (charts[chartId]) {
+                if (this.resizeTimer) clearTimeout(this.resizeTimer);
+                this.resizeTimer = setTimeout(() => {
+                    charts[chartId].resize();
+                }, 50);
+            }
+        });
+    }));
+    
+    // 全局宽度控制
+    document.getElementById('globalWidth').addEventListener('input', throttleResize(function() {
+        const width = this.value;
+        document.getElementById('globalWidthValue').textContent = width + '%';
+        
+        document.querySelectorAll('.chart-width').forEach(slider => {
+            slider.value = width;
+            const chartId = slider.dataset.chart;
+            document.getElementById(`width-${chartId}`).textContent = width + '%';
+            
+            const canvas = document.getElementById(chartId);
+            canvas.style.width = width + '%';
+            
+            if (charts[chartId]) {
+                if (this.resizeTimer) clearTimeout(this.resizeTimer);
+                this.resizeTimer = setTimeout(() => {
+                    charts[chartId].resize();
+                }, 50);
+            }
+        });
+    }));
+}
+
+function resetChartSizes() {
+    // 重置全局滑块
+    document.getElementById('globalHeight').value = 280;
+    document.getElementById('globalHeightValue').textContent = '280px';
+    document.getElementById('globalWidth').value = 100;
+    document.getElementById('globalWidthValue').textContent = '100%';
+    
+    // 重置所有图表
+    document.querySelectorAll('.chart-height').forEach(slider => {
+        slider.value = 280;
+        const chartId = slider.dataset.chart;
+        document.getElementById(`height-${chartId}`).textContent = '280px';
+        document.getElementById(chartId).style.height = '280px';
+    });
+    
+    document.querySelectorAll('.chart-width').forEach(slider => {
+        slider.value = 100;
+        const chartId = slider.dataset.chart;
+        document.getElementById(`width-${chartId}`).textContent = '100%';
+        document.getElementById(chartId).style.width = '100%';
+    });
+    
+    // 统一更新所有图表
+    Object.values(charts).forEach(chart => {
+        if (chart) chart.resize();
+    });
+}
+
+function renderDashboard() {
+    if (!db) {
+        alert('请先上传数据库文件');
+        return;
+    }
+    
+    // 节流渲染，避免频繁调用
+    const now = Date.now();
+    if (now - lastRenderTime < 300) {
+        if (renderTimeout) clearTimeout(renderTimeout);
+        renderTimeout = setTimeout(() => renderDashboard(), 300);
+        return;
+    }
+    lastRenderTime = now;
+    
+    try {
+        const start = document.getElementById("startDate").value;
+        const end = document.getElementById("endDate").value;
+        
+        if (!start || !end) return;
+        
+        const result = db.exec(`
+            SELECT 
+            A.start_time,
+            A.end_time,
+            A.efficiency,
+            S.name
+            FROM Activity A
+            JOIN SubTheme S ON A.theme_id = S.id
+            WHERE date(A.start_time) BETWEEN '${start}' AND '${end}'
+            ORDER BY A.start_time
+        `);
+        
+        if (result.length === 0) {
+            alert('所选时间范围内没有数据');
+            return;
+        }
+        
+        const rows = result[0].values.map(r => ({
+            start: r[0],
+            end: r[1],
+            efficiency: r[2],
+            theme: r[3]
+        }));
+        
+        // 使用requestAnimationFrame分批渲染，避免阻塞
+        requestAnimationFrame(() => {
+            computeBasicStats(rows);
+            
+            requestAnimationFrame(() => renderThemeDurationLine(rows));
+            requestAnimationFrame(() => renderEfficiencyTrend(rows));
+            requestAnimationFrame(() => renderThemePie(rows));
+            requestAnimationFrame(() => renderEfficiencyBar(rows));
+        });
+        
+    } catch (error) {
+        console.error('渲染失败：', error);
+        alert('渲染图表失败：' + error.message);
+    }
+}
+
+function computeBasicStats(rows) {
+    const dates = rows.map(r => new Date(r.start));
+    const minDate = new Date(Math.min(...dates));
+    const maxDate = new Date(Math.max(...dates));
+    
+    const totalDays = Math.floor((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+    
+    const totalDuration = rows.reduce((sum, r) => {
+        return sum + (new Date(r.end) - new Date(r.start)) / 60000;
+    }, 0);
+    
+    const avgPerDay = totalDuration / totalDays;
+    
+    document.getElementById("startDateInfo").innerText = 
+        "📅 记录开始日期: " + minDate.toISOString().slice(0,10);
+    
+    document.getElementById("totalDaysInfo").innerText = 
+        "📊 记录总天数: " + totalDays;
+    
+    document.getElementById("totalRecordsInfo").innerText = 
+        "📝 记录条数: " + rows.length;
+    
+    document.getElementById("totalDurationInfo").innerText = 
+        "⏱️ 累计总分钟: " + totalDuration.toFixed(1);
+    
+    document.getElementById("avgPerDayInfo").innerText = 
+        "📈 平均每日分钟: " + avgPerDay.toFixed(1);
+}
+
+function renderThemeDurationLine(rows) {
+    const map = {};
+    
+    rows.forEach(r => {
+        const day = r.start.slice(0,10);
+        const duration = (new Date(r.end) - new Date(r.start)) / 60000;
+        const key = day + "|" + r.theme;
+        
+        if(!map[key]) map[key] = 0;
+        map[key] += duration;
+    });
+    
+    const days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
+    const themes = [...new Set(rows.map(r => r.theme))];
+    
+    const datasets = themes.map(t => {
+        return {
+            label: t,
+            data: days.map(d => map[d + "|" + t] || 0),
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0.3
+        };
+    });
+    
+    destroyChart("themeDurationLine");
+    
+    const ctx = document.getElementById("themeDurationLine").getContext("2d");
+    charts.themeDurationLine = new Chart(ctx, {
+        type: 'line',
+        data: { labels: days, datasets: datasets },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12 } }
+            }
+        }
+    });
+}
+
+function renderEfficiencyTrend(rows) {
+    const days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
+    
+    const avgPerDay = days.map(d => {
+        const dayRows = rows.filter(r => r.start.slice(0,10) === d && r.efficiency != 5);
+        if(dayRows.length == 0) return null;
+        return Number((dayRows.reduce((s, r) => s + r.efficiency, 0) / dayRows.length).toFixed(2));
+    });
+    
+    destroyChart("efficiencyLine");
+    
+    const ctx = document.getElementById("efficiencyLine").getContext("2d");
+    charts.efficiencyLine = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: days,
+            datasets: [{
+                label: "每日平均效率",
+                data: avgPerDay,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                borderWidth: 3,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function renderThemePie(rows) {
+    const map = {};
+    
+    rows.forEach(r => {
+        const duration = (new Date(r.end) - new Date(r.start)) / 60000;
+        if(!map[r.theme]) map[r.theme] = 0;
+        map[r.theme] += duration;
+    });
+    
+    destroyChart("themePie");
+    
+    const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+    
+    const ctx = document.getElementById("themePie").getContext("2d");
+    charts.themePie = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(map),
+            datasets: [{
+                data: Object.values(map),
+                backgroundColor: colors.slice(0, Object.keys(map).length),
+                borderWidth: 0
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 12 } }
+            }
+        }
+    });
+}
+
+function renderEfficiencyBar(rows) {
+    const dist = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};
+    
+    rows.forEach(r => {
+        dist[r.efficiency]++;
+    });
+    
+    destroyChart("efficiencyBar");
+    
+    const ctx = document.getElementById("efficiencyBar").getContext("2d");
+    charts.efficiencyBar = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ["低 (0)", "偏低 (1)", "正常 (2)", "高 (3)", "极高 (4)", "无 (5)"],
+            datasets: [{
+                label: "记录数量",
+                data: Object.values(dist),
+                backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#94a3b8'],
+                borderRadius: 6
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
+}
+
+function destroyChart(id) {
+    if (charts[id]) {
+        charts[id].destroy();
+        charts[id] = null;
+    }
+}
+
+// 窗口大小变化时优化图表重绘
+window.addEventListener('resize', () => {
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        Object.values(charts).forEach(chart => {
+            if (chart) chart.resize();
+        });
+    }, 150);
+});
+
+</script>
+
+</body>
+</html>

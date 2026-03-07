@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity SQLite Dashboard v3 - 模块化版</title>
+    
+    <!-- 第三方库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<h2>📊 Activity SQLite 数据分析面板 v3 - 模块化版</h2>
+
+<input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
+
+<div class="filterBox">
+    <span style="font-weight: 500;">📅 时间范围：</span>
+    <input type="date" id="startDate">
+    <span>—</span>
+    <input type="date" id="endDate">
+    <button onclick="app.renderDashboard()">🔄 更新图表</button>
+</div>
+
+<!-- 全局图表大小控制 -->
+<div class="global-controls">
+    <span style="font-weight: 500;">📏 全局调整：</span>
+    <label>
+        高度
+        <input type="range" id="globalHeight" min="180" max="400" value="280" step="10">
+        <span id="globalHeightValue" class="control-value">280px</span>
+    </label>
+    <label>
+        宽度
+        <input type="range" id="globalWidth" min="70" max="100" value="100" step="5">
+        <span id="globalWidthValue" class="control-value">100%</span>
+    </label>
+    <button class="reset-btn" onclick="app.resetChartSizes()">↺ 重置默认</button>
+</div>
+
+<div class="infoBox" id="statsContainer">
+    <p id="startDateInfo">记录开始日期: -</p>
+    <p id="totalDaysInfo">记录总天数: -</p>
+    <p id="totalRecordsInfo">记录条数: -</p>
+    <p id="totalDurationInfo">累计总分钟: -</p>
+    <p id="avgPerDayInfo">平均每日分钟: -</p>
+</div>
+
+<!-- 图表容器 - 使用自定义元素属性 -->
+<div class="chart-container" data-chart="themeDurationLine">
+    <div class="chart-header">
+        <span class="chart-title">📈 主题持续时间趋势</span>
+        <div class="chart-controls" data-chart-id="themeDurationLine"></div>
+    </div>
+    <canvas id="themeDurationLine"></canvas>
+</div>
+
+<div class="chart-container" data-chart="efficiencyLine">
+    <div class="chart-header">
+        <span class="chart-title">📊 每日平均效率趋势</span>
+        <div class="chart-controls" data-chart-id="efficiencyLine"></div>
+    </div>
+    <canvas id="efficiencyLine"></canvas>
+</div>
+
+<div class="chart-container" data-chart="themePie">
+    <div class="chart-header">
+        <span class="chart-title">🥧 主题时间占比</span>
+        <div class="chart-controls" data-chart-id="themePie"></div>
+    </div>
+    <canvas id="themePie"></canvas>
+</div>
+
+<div class="chart-container" data-chart="efficiencyBar">
+    <div class="chart-header">
+        <span class="chart-title">📊 效率分布柱状图</span>
+        <div class="chart-controls" data-chart-id="efficiencyBar"></div>
+    </div>
+    <canvas id="efficiencyBar"></canvas>
+</div>
+
+<!-- 使用 ES6 模块，注意 type="module" -->
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
