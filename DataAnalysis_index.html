@@ -2,775 +2,391 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Activity SQLite Dashboard v3 - 优化版</title>
-
+<title>活动分析 · 简洁版</title>
+<!-- 只保留核心库 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
-
+/* --- 基础布局 --- */
+*{box-sizing:border-box;margin:0;padding:0;}
 body{
-    font-family: Arial, sans-serif;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    background: #f5f5f5;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    max-width: 1200px; margin: 0 auto; padding: 20px; background: #f4f6fa;
 }
+h2{font-weight: 500; font-size: 1.7rem; margin: 0 0 0.8rem 0; color: #1e293b; display: flex; align-items: center; gap: 8px;}
+h2:before{content:"📋"; font-size: 1.8rem;}
 
-/* 图表容器优化 */
-.chart-container {
-    margin-top: 25px;
-    padding: 15px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
+/* 模块卡片 (统一风格) */
+.card{
+    background: white; border-radius: 20px; padding: 1.5rem 1.8rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.02), 0 2px 6px rgba(0,20,50,0.05);
+    margin-bottom: 1.8rem;
+    transition: box-shadow 0.2s;
 }
+.card:hover{box-shadow: 0 12px 28px rgba(0,0,0,0.05);}
 
-.chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+/* 文件 + 过滤条 (紧凑) */
+.flex-row{
+    display: flex; flex-wrap: wrap; gap: 1rem 2rem; align-items: center;
 }
-
-.chart-title {
-    font-weight: bold;
-    font-size: 16px;
-    color: #2c3e50;
+input[type="file"]{
+    background: white; border: 1px solid #e2e8f0; border-radius: 40px;
+    padding: 0.6rem 1.2rem; font-size: 0.95rem; width: auto; flex: 2 1 300px;
 }
-
-.chart-controls {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
+.date-group{
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem;
+    background: #f8fafc; padding: 0.4rem 1.2rem; border-radius: 40px;
 }
-
-.control-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #f8f9fa;
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 13px;
+.date-group input[type="date"]{
+    border: 1px solid #dde7f0; border-radius: 30px; padding: 0.4rem 1rem;
+    font-size: 0.9rem; background: white;
 }
-
-.control-group label {
-    color: #495057;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.btn{
+    background: #1e3c72; color: white; border: none; padding: 0.6rem 1.8rem;
+    border-radius: 40px; font-weight: 500; font-size: 0.95rem; cursor: pointer;
+    transition: 0.15s; box-shadow: 0 2px 6px rgba(0,30,60,0.1);
+    display: inline-flex; align-items: center; gap: 0.4rem;
 }
+.btn:hover{background: #132b4a; transform: scale(0.98);}
 
-.control-group input[type="range"] {
-    width: 100px;
-    height: 4px;
-    border-radius: 2px;
-    background: #dee2e6;
+/* 全局尺寸控制器 (极简) */
+.size-bar{
+    display: flex; flex-wrap: wrap; gap: 2rem 3rem; align-items: center;
+    background: #f1f5f9; border-radius: 48px; padding: 0.6rem 1.8rem;
 }
-
-.control-group input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #4f46e5;
-    cursor: pointer;
-    transition: 0.1s;
+.size-item{
+    display: flex; align-items: center; gap: 0.8rem; font-size: 0.95rem;
 }
-
-.control-group input[type="range"]::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
-    background: #4338ca;
+.size-item input[type=range]{
+    width: 130px; height: 5px; border-radius: 10px; background: #cbd5e1;
 }
+.size-item span{min-width: 55px; color: #0f3b6a; font-weight: 500;}
 
-.control-value {
-    min-width: 45px;
-    text-align: right;
-    color: #4f46e5;
-    font-weight: 500;
+/* 统计卡片网格 */
+.stats-grid{
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem;
 }
-
-/* 画布固定高度 - 优化版 */
-canvas {
-    width: 100% !important;
-    height: 280px !important;  /* 固定高度，防止过长 */
-    display: block;
-    border-radius: 8px;
+.stat-cell{
+    background: #f9fcff; border-radius: 18px; padding: 1rem 1.2rem;
+    border-left: 4px solid #1e3c72; line-height: 1.5;
 }
+.stat-cell strong{display: block; font-size: 1.4rem; font-weight: 600; color: #0b253c;}
 
-/* 小屏幕适配 */
-@media (max-width: 768px) {
-    canvas {
-        height: 220px !important;
-    }
-    
-    .chart-controls {
-        flex-direction: column;
-        gap: 8px;
-    }
+/* 图表网格 — 两列布局 (清爽整齐) */
+.chart-grid{
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.8rem;
+    margin-top: 0.5rem;
 }
-
-.infoBox {
-    margin: 20px 0;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 15px;
+.chart-card{
+    background: white; border-radius: 24px; padding: 1.2rem 1.2rem 1rem 1.2rem;
+    box-shadow: 0 5px 18px rgba(0,0,0,0.02); border: 1px solid #eef3f8;
 }
-
-.infoBox p {
-    margin: 0;
-    padding: 10px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #495057;
+.chart-title{
+    font-weight: 600; font-size: 1rem; color: #1e3759; margin-bottom: 0.8rem;
+    display: flex; justify-content: space-between; align-items: center;
+    letter-spacing: 0.3px;
 }
-
-.filterBox {
-    margin: 20px 0;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
+.chart-title span{background: #e6edf6; padding: 0.2rem 0.8rem; border-radius: 30px; font-size: 0.8rem;}
+canvas{
+    width: 100% !important; height: auto !important; max-height: 260px;
+    display: block; border-radius: 12px; background: #fcfdff;
 }
-
-.filterBox input[type="date"] {
-    padding: 8px 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 14px;
+/* 小屏幕叠成一列 */
+@media (max-width: 700px){
+    .chart-grid{grid-template-columns: 1fr;}
+    .size-bar{gap: 1rem;}
 }
-
-button {
-    padding: 8px 20px;
-    background: #4f46e5;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
+.reset-link{
+    color: #2c577c; background: transparent; border: 1px solid #bcccdb;
+    padding: 0.3rem 1rem; border-radius: 30px; font-size: 0.9rem; cursor: pointer;
+    transition: 0.1s; margin-left: auto;
 }
-
-button:hover {
-    background: #4338ca;
-}
-
-.global-controls {
-    margin: 20px 0;
-    padding: 20px;
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    display: flex;
-    gap: 30px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.global-controls label {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    color: #495057;
-}
-
-.global-controls input[type="range"] {
-    width: 150px;
-}
-
-.reset-btn {
-    background: #6c757d;
-}
-
-.reset-btn:hover {
-    background: #5a6268;
-}
-
-input[type="file"] {
-    padding: 10px;
-    background: white;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
-    width: 100%;
-    max-width: 400px;
-}
-
+.reset-link:hover{background: #e2eaf3;}
 </style>
 </head>
 <body>
 
-<h2>📊 Activity SQLite 数据分析面板 v3 - 优化版</h2>
+<h2>活动数据 · 精简仪表盘</h2>
 
-<input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
-
-<div class="filterBox">
-    <span style="font-weight: 500;">📅 时间范围：</span>
-    <input type="date" id="startDate">
-    <span>—</span>
-    <input type="date" id="endDate">
-    <button onclick="renderDashboard()">🔄 更新图表</button>
-</div>
-
-<!-- 全局图表大小控制 - 优化版 -->
-<div class="global-controls">
-    <span style="font-weight: 500;">📏 全局调整：</span>
-    <label>
-        高度
-        <input type="range" id="globalHeight" min="180" max="400" value="280" step="10">
-        <span id="globalHeightValue" class="control-value">280px</span>
-    </label>
-    <label>
-        宽度
-        <input type="range" id="globalWidth" min="70" max="100" value="100" step="5">
-        <span id="globalWidthValue" class="control-value">100%</span>
-    </label>
-    <button class="reset-btn" onclick="resetChartSizes()">↺ 重置默认</button>
-</div>
-
-<div class="infoBox" id="statsContainer">
-    <p id="startDateInfo">记录开始日期: -</p>
-    <p id="totalDaysInfo">记录总天数: -</p>
-    <p id="totalRecordsInfo">记录条数: -</p>
-    <p id="totalDurationInfo">累计总分钟: -</p>
-    <p id="avgPerDayInfo">平均每日分钟: -</p>
-</div>
-
-<!-- 主题持续时间折线图 -->
-<div class="chart-container">
-    <div class="chart-header">
-        <span class="chart-title">📈 主题持续时间趋势</span>
-        <div class="chart-controls">
-            <div class="control-group">
-                <label>📏 高 <input type="range" class="chart-height" data-chart="themeDurationLine" min="180" max="400" value="280" step="10"></label>
-                <span class="control-value" id="height-themeDurationLine">280px</span>
-            </div>
-            <div class="control-group">
-                <label>📐 宽 <input type="range" class="chart-width" data-chart="themeDurationLine" min="70" max="100" value="100" step="5"></label>
-                <span class="control-value" id="width-themeDurationLine">100%</span>
-            </div>
+<!-- 模块 A: 文件上传 + 时间过滤 (整合在一行) -->
+<div class="card" style="padding: 1.2rem 1.8rem;">
+    <div class="flex-row">
+        <input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
+        <div class="date-group">
+            <span style="color:#1e3c72;">📅</span>
+            <input type="date" id="startDate">
+            <span>—</span>
+            <input type="date" id="endDate">
+            <button class="btn" onclick="renderDashboard()">刷新</button>
         </div>
     </div>
-    <canvas id="themeDurationLine"></canvas>
 </div>
 
-<!-- 效率趋势折线图 -->
-<div class="chart-container">
-    <div class="chart-header">
-        <span class="chart-title">📊 每日平均效率趋势</span>
-        <div class="chart-controls">
-            <div class="control-group">
-                <label>📏 高 <input type="range" class="chart-height" data-chart="efficiencyLine" min="180" max="400" value="280" step="10"></label>
-                <span class="control-value" id="height-efficiencyLine">280px</span>
-            </div>
-            <div class="control-group">
-                <label>📐 宽 <input type="range" class="chart-width" data-chart="efficiencyLine" min="70" max="100" value="100" step="5"></label>
-                <span class="control-value" id="width-efficiencyLine">100%</span>
-            </div>
+<!-- 模块 B: 统一尺寸滑块 (全局控制) 简约收纳 -->
+<div class="card" style="padding: 0.8rem 1.8rem;">
+    <div class="size-bar">
+        <div class="size-item">
+            <span>📏 高</span>
+            <input type="range" id="globalHeight" min="180" max="360" value="250" step="5">
+            <span id="globalHeightValue">250px</span>
         </div>
+        <div class="size-item">
+            <span>📐 宽 %</span>
+            <input type="range" id="globalWidth" min="70" max="100" value="100" step="5">
+            <span id="globalWidthValue">100%</span>
+        </div>
+        <div class="reset-link" onclick="resetChartSizes()">↺ 重置</div>
     </div>
-    <canvas id="efficiencyLine"></canvas>
 </div>
 
-<!-- 主题占比饼图 -->
-<div class="chart-container">
-    <div class="chart-header">
-        <span class="chart-title">🥧 主题时间占比</span>
-        <div class="chart-controls">
-            <div class="control-group">
-                <label>📏 高 <input type="range" class="chart-height" data-chart="themePie" min="180" max="400" value="280" step="10"></label>
-                <span class="control-value" id="height-themePie">280px</span>
-            </div>
-            <div class="control-group">
-                <label>📐 宽 <input type="range" class="chart-width" data-chart="themePie" min="70" max="100" value="100" step="5"></label>
-                <span class="control-value" id="width-themePie">100%</span>
-            </div>
-        </div>
+<!-- 模块 C: 关键指标卡片 (整合5项) -->
+<div class="card" style="padding: 1.2rem 1.8rem;">
+    <div class="stats-grid" id="statsContainer">
+        <div class="stat-cell"><span>📅 开始</span><strong id="startDateInfo">-</strong></div>
+        <div class="stat-cell"><span>📆 总天数</span><strong id="totalDaysInfo">-</strong></div>
+        <div class="stat-cell"><span>📝 记录数</span><strong id="totalRecordsInfo">-</strong></div>
+        <div class="stat-cell"><span>⏱️ 总分钟</span><strong id="totalDurationInfo">-</strong></div>
+        <div class="stat-cell"><span>📊 日均</span><strong id="avgPerDayInfo">-</strong></div>
     </div>
-    <canvas id="themePie"></canvas>
 </div>
 
-<!-- 效率分布柱状图 -->
-<div class="chart-container">
-    <div class="chart-header">
-        <span class="chart-title">📊 效率分布柱状图</span>
-        <div class="chart-controls">
-            <div class="control-group">
-                <label>📏 高 <input type="range" class="chart-height" data-chart="efficiencyBar" min="180" max="400" value="280" step="10"></label>
-                <span class="control-value" id="height-efficiencyBar">280px</span>
-            </div>
-            <div class="control-group">
-                <label>📐 宽 <input type="range" class="chart-width" data-chart="efficiencyBar" min="70" max="100" value="100" step="5"></label>
-                <span class="control-value" id="width-efficiencyBar">100%</span>
-            </div>
-        </div>
+<!-- 模块 D: 所有图表用网格展示 (4个) 每个自带标题，无多余控件 -->
+<div class="chart-grid">
+    <!-- 1. 主题持续时间折线图 -->
+    <div class="chart-card">
+        <div class="chart-title"><span>📈 主题时长趋势</span> <span>· 折线</span></div>
+        <canvas id="themeDurationLine"></canvas>
     </div>
-    <canvas id="efficiencyBar"></canvas>
+    <!-- 2. 每日平均效率趋势 -->
+    <div class="chart-card">
+        <div class="chart-title"><span>📊 效率趋势</span> <span>· 平均</span></div>
+        <canvas id="efficiencyLine"></canvas>
+    </div>
+    <!-- 3. 主题占比饼图 -->
+    <div class="chart-card">
+        <div class="chart-title"><span>🥧 主题时间占比</span> <span>· 饼图</span></div>
+        <canvas id="themePie"></canvas>
+    </div>
+    <!-- 4. 效率分布柱状图 -->
+    <div class="chart-card">
+        <div class="chart-title"><span>📊 效率分布</span> <span>· 柱状</span></div>
+        <canvas id="efficiencyBar"></canvas>
+    </div>
 </div>
 
 <script>
+// --- 精简模块化：只保留必要逻辑，移除细粒度滑块和多余控制，所有图表共用全局尺寸 ---
 let db;
 let charts = {};
-let resizeTimeout;
-let lastRenderTime = 0;
+let SQL;
 
-// 优化SQL.js初始化
-initSqlJs({
-    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-}).then(SQL => {
-    window.SQL = SQL;
-    document.getElementById("dbFile").addEventListener("change", handleFileUpload);
-});
+// 初始化sql.js
+initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` })
+  .then(SQLlib => {
+      SQL = SQLlib;
+      document.getElementById("dbFile").addEventListener("change", handleFileUpload);
+  });
 
+// 处理上传
 function handleFileUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
-    
     const reader = new FileReader();
-    
-    reader.onload = function() {
+    reader.onload = function () {
         try {
             const uInt8Array = new Uint8Array(reader.result);
             db = new SQL.Database(uInt8Array);
-            
-            // 验证数据库是否包含必要的表
-            const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity', 'SubTheme')");
-            if (tables.length < 2) {
-                alert('数据库文件格式不正确，需要包含 Activity 和 SubTheme 表');
-                return;
-            }
-            
+            // 快速验证表存在
+            const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity','SubTheme')");
+            if (tables.length < 2) { alert('数据库需要包含 Activity 和 SubTheme 表'); return; }
             initDateRange();
-            initSizeControls();
+            setupGlobalSizeControls(); // 绑定全局滑块 (不再需要每个图表的单独滑块)
             renderDashboard();
-        } catch (error) {
-            alert('加载数据库文件失败：' + error.message);
-        }
+        } catch (err) { alert('加载失败: ' + err.message); }
     };
-    
     reader.readAsArrayBuffer(file);
 }
 
+// 设置日期范围 (从数据库读取)
 function initDateRange() {
     try {
-        const res = db.exec(`
-            SELECT 
-            MIN(start_time),
-            MAX(start_time)
-            FROM Activity
-        `);
-        
-        if (res.length === 0 || !res[0].values[0][0]) return;
-        
-        const min = res[0].values[0][0].slice(0, 10);
-        const max = res[0].values[0][1].slice(0, 10);
-        
-        document.getElementById("startDate").value = min;
-        document.getElementById("endDate").value = max;
-    } catch (error) {
-        console.error('初始化日期范围失败：', error);
-    }
+        const res = db.exec("SELECT MIN(start_time), MAX(start_time) FROM Activity");
+        if (res.length && res[0].values[0][0]) {
+            document.getElementById("startDate").value = res[0].values[0][0].slice(0,10);
+            document.getElementById("endDate").value = res[0].values[0][1].slice(0,10);
+        }
+    } catch (e) { console.warn("日期初始化失败", e); }
 }
 
-function initSizeControls() {
-    // 使用节流函数优化滑块性能
-    const throttleResize = (callback) => {
-        return (e) => {
-            if (resizeTimeout) clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => callback(e), 16); // 约60fps
-        };
-    };
+// 全局滑块 —— 同时更新所有canvas尺寸，并调用resize
+function setupGlobalSizeControls() {
+    const heightSlider = document.getElementById('globalHeight');
+    const widthSlider = document.getElementById('globalWidth');
+    const heightSpan = document.getElementById('globalHeightValue');
+    const widthSpan = document.getElementById('globalWidthValue');
     
-    // 单个图表高度控制
-    document.querySelectorAll('.chart-height').forEach(slider => {
-        slider.addEventListener('input', throttleResize(function() {
-            const chartId = this.dataset.chart;
-            const height = this.value;
-            document.getElementById(`height-${chartId}`).textContent = height + 'px';
-            
-            // 只更新CSS，不重新渲染图表
-            const canvas = document.getElementById(chartId);
-            canvas.style.height = height + 'px';
-            
-            // 延迟更新图表，避免频繁重绘
-            if (charts[chartId]) {
-                if (this.resizeTimer) clearTimeout(this.resizeTimer);
-                this.resizeTimer = setTimeout(() => {
-                    charts[chartId].resize();
-                }, 50);
-            }
-        }));
+    function applySizeToAllCharts() {
+        const h = heightSlider.value + 'px';
+        const w = widthSlider.value + '%';
+        // 更新所有canvas样式
+        document.querySelectorAll('canvas').forEach(canvas => {
+            canvas.style.height = h;
+            canvas.style.width = w;
+        });
+        // 通知每个chart.js实例resize (防抖)
+        if (window.resizeTimer) clearTimeout(window.resizeTimer);
+        window.resizeTimer = setTimeout(() => {
+            Object.values(charts).forEach(c => c?.resize());
+        }, 40);
+    }
+    
+    heightSlider.addEventListener('input', function() {
+        heightSpan.textContent = this.value + 'px';
+        applySizeToAllCharts();
+    });
+    widthSlider.addEventListener('input', function() {
+        widthSpan.textContent = this.value + '%';
+        applySizeToAllCharts();
     });
     
-    // 单个图表宽度控制
-    document.querySelectorAll('.chart-width').forEach(slider => {
-        slider.addEventListener('input', throttleResize(function() {
-            const chartId = this.dataset.chart;
-            const width = this.value;
-            document.getElementById(`width-${chartId}`).textContent = width + '%';
-            
-            const canvas = document.getElementById(chartId);
-            canvas.style.width = width + '%';
-            
-            if (charts[chartId]) {
-                if (this.resizeTimer) clearTimeout(this.resizeTimer);
-                this.resizeTimer = setTimeout(() => {
-                    charts[chartId].resize();
-                }, 50);
-            }
-        }));
-    });
-    
-    // 全局高度控制
-    document.getElementById('globalHeight').addEventListener('input', throttleResize(function() {
-        const height = this.value;
-        document.getElementById('globalHeightValue').textContent = height + 'px';
-        
-        document.querySelectorAll('.chart-height').forEach(slider => {
-            slider.value = height;
-            const chartId = slider.dataset.chart;
-            document.getElementById(`height-${chartId}`).textContent = height + 'px';
-            
-            const canvas = document.getElementById(chartId);
-            canvas.style.height = height + 'px';
-            
-            if (charts[chartId]) {
-                if (this.resizeTimer) clearTimeout(this.resizeTimer);
-                this.resizeTimer = setTimeout(() => {
-                    charts[chartId].resize();
-                }, 50);
-            }
-        });
-    }));
-    
-    // 全局宽度控制
-    document.getElementById('globalWidth').addEventListener('input', throttleResize(function() {
-        const width = this.value;
-        document.getElementById('globalWidthValue').textContent = width + '%';
-        
-        document.querySelectorAll('.chart-width').forEach(slider => {
-            slider.value = width;
-            const chartId = slider.dataset.chart;
-            document.getElementById(`width-${chartId}`).textContent = width + '%';
-            
-            const canvas = document.getElementById(chartId);
-            canvas.style.width = width + '%';
-            
-            if (charts[chartId]) {
-                if (this.resizeTimer) clearTimeout(this.resizeTimer);
-                this.resizeTimer = setTimeout(() => {
-                    charts[chartId].resize();
-                }, 50);
-            }
-        });
-    }));
+    // 初始同步
+    heightSlider.value = 250; heightSpan.textContent = '250px';
+    widthSlider.value = 100; widthSpan.textContent = '100%';
+    applySizeToAllCharts();
 }
 
 function resetChartSizes() {
-    // 重置全局滑块
-    document.getElementById('globalHeight').value = 280;
-    document.getElementById('globalHeightValue').textContent = '280px';
+    document.getElementById('globalHeight').value = 250;
+    document.getElementById('globalHeightValue').textContent = '250px';
     document.getElementById('globalWidth').value = 100;
     document.getElementById('globalWidthValue').textContent = '100%';
-    
-    // 重置所有图表
-    document.querySelectorAll('.chart-height').forEach(slider => {
-        slider.value = 280;
-        const chartId = slider.dataset.chart;
-        document.getElementById(`height-${chartId}`).textContent = '280px';
-        document.getElementById(chartId).style.height = '280px';
+    // 手动触发尺寸更新
+    document.querySelectorAll('canvas').forEach(c => {
+        c.style.height = '250px';
+        c.style.width = '100%';
     });
-    
-    document.querySelectorAll('.chart-width').forEach(slider => {
-        slider.value = 100;
-        const chartId = slider.dataset.chart;
-        document.getElementById(`width-${chartId}`).textContent = '100%';
-        document.getElementById(chartId).style.width = '100%';
-    });
-    
-    // 统一更新所有图表
-    Object.values(charts).forEach(chart => {
-        if (chart) chart.resize();
-    });
+    Object.values(charts).forEach(c => c?.resize());
 }
 
+// 核心渲染
 function renderDashboard() {
-    if (!db) {
-        alert('请先上传数据库文件');
-        return;
-    }
-    
-    // 节流渲染，避免频繁调用
-    const now = Date.now();
-    if (now - lastRenderTime < 300) {
-        if (renderTimeout) clearTimeout(renderTimeout);
-        renderTimeout = setTimeout(() => renderDashboard(), 300);
-        return;
-    }
-    lastRenderTime = now;
+    if (!db) return alert('请先上传数据库');
+    const start = document.getElementById("startDate").value;
+    const end = document.getElementById("endDate").value;
+    if (!start || !end) return;
     
     try {
-        const start = document.getElementById("startDate").value;
-        const end = document.getElementById("endDate").value;
-        
-        if (!start || !end) return;
-        
         const result = db.exec(`
-            SELECT 
-            A.start_time,
-            A.end_time,
-            A.efficiency,
-            S.name
-            FROM Activity A
-            JOIN SubTheme S ON A.theme_id = S.id
+            SELECT A.start_time, A.end_time, A.efficiency, S.name
+            FROM Activity A JOIN SubTheme S ON A.theme_id = S.id
             WHERE date(A.start_time) BETWEEN '${start}' AND '${end}'
             ORDER BY A.start_time
         `);
-        
-        if (result.length === 0) {
-            alert('所选时间范围内没有数据');
-            return;
-        }
+        if (!result.length) return alert('该区间无数据');
         
         const rows = result[0].values.map(r => ({
-            start: r[0],
-            end: r[1],
-            efficiency: r[2],
-            theme: r[3]
+            start: r[0], end: r[1], efficiency: r[2], theme: r[3]
         }));
         
-        // 使用requestAnimationFrame分批渲染，避免阻塞
-        requestAnimationFrame(() => {
-            computeBasicStats(rows);
-            
-            requestAnimationFrame(() => renderThemeDurationLine(rows));
-            requestAnimationFrame(() => renderEfficiencyTrend(rows));
-            requestAnimationFrame(() => renderThemePie(rows));
-            requestAnimationFrame(() => renderEfficiencyBar(rows));
-        });
-        
-    } catch (error) {
-        console.error('渲染失败：', error);
-        alert('渲染图表失败：' + error.message);
-    }
+        // 依次更新
+        computeStats(rows);
+        renderThemeDurationLine(rows);
+        renderEfficiencyTrend(rows);
+        renderThemePie(rows);
+        renderEfficiencyBar(rows);
+    } catch (err) { alert('渲染出错: ' + err.message); }
 }
 
-function computeBasicStats(rows) {
+// 统计卡片
+function computeStats(rows) {
     const dates = rows.map(r => new Date(r.start));
     const minDate = new Date(Math.min(...dates));
     const maxDate = new Date(Math.max(...dates));
-    
-    const totalDays = Math.floor((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
-    
-    const totalDuration = rows.reduce((sum, r) => {
-        return sum + (new Date(r.end) - new Date(r.start)) / 60000;
-    }, 0);
-    
-    const avgPerDay = totalDuration / totalDays;
-    
-    document.getElementById("startDateInfo").innerText = 
-        "📅 记录开始日期: " + minDate.toISOString().slice(0,10);
-    
-    document.getElementById("totalDaysInfo").innerText = 
-        "📊 记录总天数: " + totalDays;
-    
-    document.getElementById("totalRecordsInfo").innerText = 
-        "📝 记录条数: " + rows.length;
-    
-    document.getElementById("totalDurationInfo").innerText = 
-        "⏱️ 累计总分钟: " + totalDuration.toFixed(1);
-    
-    document.getElementById("avgPerDayInfo").innerText = 
-        "📈 平均每日分钟: " + avgPerDay.toFixed(1);
+    const totalDays = Math.floor((maxDate - minDate) / 86400000) + 1;
+    const totalDuration = rows.reduce((sum, r) => sum + (new Date(r.end) - new Date(r.start)) / 60000, 0);
+    document.getElementById("startDateInfo").innerText = minDate.toISOString().slice(0,10);
+    document.getElementById("totalDaysInfo").innerText = totalDays;
+    document.getElementById("totalRecordsInfo").innerText = rows.length;
+    document.getElementById("totalDurationInfo").innerText = totalDuration.toFixed(1);
+    document.getElementById("avgPerDayInfo").innerText = (totalDuration / totalDays).toFixed(1);
 }
 
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); charts[id] = null; } }
+
+// --- 四个图表渲染 (保留原算法，极简) ---
 function renderThemeDurationLine(rows) {
-    const map = {};
-    
-    rows.forEach(r => {
-        const day = r.start.slice(0,10);
-        const duration = (new Date(r.end) - new Date(r.start)) / 60000;
-        const key = day + "|" + r.theme;
-        
-        if(!map[key]) map[key] = 0;
-        map[key] += duration;
-    });
-    
-    const days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
+    const map = {}, days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
     const themes = [...new Set(rows.map(r => r.theme))];
-    
-    const datasets = themes.map(t => {
-        return {
-            label: t,
-            data: days.map(d => map[d + "|" + t] || 0),
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            tension: 0.3
-        };
+    rows.forEach(r => { 
+        const k = r.start.slice(0,10) + '|' + r.theme; 
+        map[k] = (map[k] || 0) + (new Date(r.end)-new Date(r.start))/60000;
     });
-    
-    destroyChart("themeDurationLine");
-    
-    const ctx = document.getElementById("themeDurationLine").getContext("2d");
-    charts.themeDurationLine = new Chart(ctx, {
+    const datasets = themes.map((t, i) => ({
+        label: t,
+        data: days.map(d => map[d+'|'+t] || 0),
+        borderColor: `hsl(${i*45 % 360}, 70%, 55%)`, tension: 0.2, fill: false
+    }));
+    destroyChart('themeDurationLine');
+    charts.themeDurationLine = new Chart('themeDurationLine', {
         type: 'line',
-        data: { labels: days, datasets: datasets },
-        options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { position: 'top', labels: { boxWidth: 12 } }
-            }
-        }
+        data: { labels: days, datasets },
+        options: { responsive: true, maintainAspectRatio: false, animation: false }
     });
 }
 
 function renderEfficiencyTrend(rows) {
     const days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
-    
-    const avgPerDay = days.map(d => {
-        const dayRows = rows.filter(r => r.start.slice(0,10) === d && r.efficiency != 5);
-        if(dayRows.length == 0) return null;
-        return Number((dayRows.reduce((s, r) => s + r.efficiency, 0) / dayRows.length).toFixed(2));
+    const avg = days.map(d => {
+        const dayRows = rows.filter(r => r.start.slice(0,10)===d && r.efficiency!=5);
+        return dayRows.length ? Number((dayRows.reduce((s,r)=>s+r.efficiency,0)/dayRows.length).toFixed(2)) : null;
     });
-    
-    destroyChart("efficiencyLine");
-    
-    const ctx = document.getElementById("efficiencyLine").getContext("2d");
-    charts.efficiencyLine = new Chart(ctx, {
+    destroyChart('efficiencyLine');
+    charts.efficiencyLine = new Chart('efficiencyLine', {
         type: 'line',
-        data: {
-            labels: days,
-            datasets: [{
-                label: "每日平均效率",
-                data: avgPerDay,
-                borderColor: '#4f46e5',
-                backgroundColor: 'rgba(79, 70, 229, 0.1)',
-                borderWidth: 3,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                tension: 0.3,
-                fill: true
-            }]
-        },
-        options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { display: false }
-            }
-        }
+        data: { labels: days, datasets: [{
+            label: '日均效率', data: avg, borderColor: '#1e3c72', backgroundColor: 'rgba(30,60,114,0.05)',
+            tension: 0.2, fill: true, pointRadius: 3
+        }] },
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
 function renderThemePie(rows) {
-    const map = {};
-    
+    const themeTotal = {};
     rows.forEach(r => {
-        const duration = (new Date(r.end) - new Date(r.start)) / 60000;
-        if(!map[r.theme]) map[r.theme] = 0;
-        map[r.theme] += duration;
+        const d = (new Date(r.end)-new Date(r.start))/60000;
+        themeTotal[r.theme] = (themeTotal[r.theme] || 0) + d;
     });
-    
-    destroyChart("themePie");
-    
-    const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-    
-    const ctx = document.getElementById("themePie").getContext("2d");
-    charts.themePie = new Chart(ctx, {
+    destroyChart('themePie');
+    const colors = ['#3b7fbd','#56b4a2','#e09f3e','#9e5f8b','#cf6f4a','#5171a5'];
+    charts.themePie = new Chart('themePie', {
         type: 'pie',
-        data: {
-            labels: Object.keys(map),
-            datasets: [{
-                data: Object.values(map),
-                backgroundColor: colors.slice(0, Object.keys(map).length),
-                borderWidth: 0
-            }]
-        },
-        options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { position: 'right', labels: { boxWidth: 12 } }
-            }
-        }
+        data: { labels: Object.keys(themeTotal), datasets: [{
+            data: Object.values(themeTotal), backgroundColor: colors,
+            borderWidth: 0
+        }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
     });
 }
 
 function renderEfficiencyBar(rows) {
-    const dist = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};
-    
-    rows.forEach(r => {
-        dist[r.efficiency]++;
-    });
-    
-    destroyChart("efficiencyBar");
-    
-    const ctx = document.getElementById("efficiencyBar").getContext("2d");
-    charts.efficiencyBar = new Chart(ctx, {
+    const dist = {0:0,1:0,2:0,3:0,4:0,5:0};
+    rows.forEach(r => dist[r.efficiency]++);
+    destroyChart('efficiencyBar');
+    charts.efficiencyBar = new Chart('efficiencyBar', {
         type: 'bar',
-        data: {
-            labels: ["低 (0)", "偏低 (1)", "正常 (2)", "高 (3)", "极高 (4)", "无 (5)"],
-            datasets: [{
-                label: "记录数量",
-                data: Object.values(dist),
-                backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#94a3b8'],
-                borderRadius: 6
-            }]
-        },
-        options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 500 },
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { stepSize: 1 }
-                }
-            }
-        }
+        data: { labels: ['0低','1偏低','2正常','3高','4极高','5无'], datasets: [{
+            data: Object.values(dist), backgroundColor: '#5478a7', borderRadius: 6
+        }] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { ticks: { stepSize: 1 } } } }
     });
 }
 
-function destroyChart(id) {
-    if (charts[id]) {
-        charts[id].destroy();
-        charts[id] = null;
-    }
-}
-
-// 窗口大小变化时优化图表重绘
-window.addEventListener('resize', () => {
-    if (resizeTimeout) clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        Object.values(charts).forEach(chart => {
-            if (chart) chart.resize();
-        });
-    }, 150);
+// 窗口大小变化自适应
+window.addEventListener('resize', ()=>{
+    clearTimeout(window.rszTm);
+    window.rszTm = setTimeout(()=> Object.values(charts).forEach(c=>c?.resize()), 120);
 });
-
 </script>
-
 </body>
 </html>
