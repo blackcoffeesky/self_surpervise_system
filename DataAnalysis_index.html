@@ -175,7 +175,7 @@ canvas{
 </div>
 
 <script>
-// --- 精简模块化：只保留必要逻辑，移除细粒度滑块和多余控制，所有图表共用全局尺寸 ---
+// --- 精简模块化：只保留必要逻辑，所有图表共用全局尺寸 ---
 let db;
 let charts = {};
 let SQL;
@@ -197,8 +197,8 @@ function handleFileUpload(e) {
             const uInt8Array = new Uint8Array(reader.result);
             db = new SQL.Database(uInt8Array);
             // 快速验证表存在
-            const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity','SubTheme')");
-            if (tables.length < 2) { alert('数据库需要包含 Activity 和 SubTheme 表'); return; }
+            // const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity','SubTheme')");
+            // if (tables.length < 2) { alert('数据库需要包含 Activity 和 SubTheme 表'); return; }
             initDateRange();
             setupGlobalSizeControls(); // 绑定全局滑块 (不再需要每个图表的单独滑块)
             renderDashboard();
