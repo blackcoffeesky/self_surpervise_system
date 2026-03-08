@@ -49,10 +49,8 @@ def parse_and_insert_json(filepath):
         theme_name = r["theme"]
         start_str = r["startTime"]
         end_str = r["endTime"]
-        efficiency = float(r.get("efficiency", 0.5))
+        efficiency = float(r.get("efficiency", 2))
 
-        if not (0 <= efficiency <= 1):
-            raise ValueError("效率必须在0~1之间")
 
         start_dt = parse_time(start_str)
         end_dt = parse_time(end_str)

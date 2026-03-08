@@ -1,55 +1,160 @@
 {
-  "version": "1.0",
-  "export_time": "2026-03-05 16:27",
+  "version": "2.0",
+  "export_time": "2026-03-08 14:49",
   "records": [
     {
       "theme": "考研准备",
-      "startTime": "2026-03-04 16:05",
-      "endTime": "2026-03-04 17:15",
-      "duration": 70.05893333333333,
-      "efficiency": 0.5
+      "startTime": "2026-03-05 20:03",
+      "endTime": "2026-03-05 20:40",
+      "duration": 37.34915,
+      "efficiency": 1
     },
     {
       "theme": "考研准备",
-      "startTime": "2026-03-04 19:33",
-      "endTime": "2026-03-04 21:47",
-      "duration": 134.42768333333333,
-      "efficiency": 0.5
+      "startTime": "2026-03-05 21:12",
+      "endTime": "2026-03-05 21:48",
+      "duration": 36.5324,
+      "efficiency": 0
     },
     {
       "theme": "考研准备",
-      "startTime": "2026-03-05 09:21",
-      "endTime": "2026-03-05 09:40",
-      "duration": 19.945133333333334,
-      "efficiency": 0.5
+      "startTime": "2026-03-06 08:44",
+      "endTime": "2026-03-06 09:27",
+      "duration": 43.93748333333333,
+      "efficiency": 2
     },
     {
       "theme": "投资",
-      "startTime": "2026-03-05 09:41",
-      "endTime": "2026-03-05 09:45",
-      "duration": 4.93015,
-      "efficiency": 0.5
+      "startTime": "2026-03-06 09:28",
+      "endTime": "2026-03-06 09:52",
+      "duration": 24.286916666666666,
+      "efficiency": 5
     },
     {
       "theme": "考研准备",
-      "startTime": "2026-03-05 09:45",
-      "endTime": "2026-03-05 10:39",
-      "duration": 54.18561666666667,
-      "efficiency": 0.5
-    },
-    {
-      "theme": "考研准备",
-      "startTime": "2026-03-05 10:49",
-      "endTime": "2026-03-05 11:23",
-      "duration": 34.909166666666664,
-      "efficiency": 0.7
+      "startTime": "2026-03-06 10:14",
+      "endTime": "2026-03-06 11:05",
+      "duration": 51.60868333333333,
+      "efficiency": 2
     },
     {
       "theme": "投资",
-      "startTime": "2026-03-05 11:24",
-      "endTime": "2026-03-05 11:29",
-      "duration": 5.902616666666667,
-      "efficiency": 0.5
+      "startTime": "2026-03-06 11:05",
+      "endTime": "2026-03-06 11:08",
+      "duration": 3.1195833333333334,
+      "efficiency": 5
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-06 11:08",
+      "endTime": "2026-03-06 11:24",
+      "duration": 16.949233333333332,
+      "efficiency": 3
+    },
+    {
+      "theme": "投资",
+      "startTime": "2026-03-06 14:35",
+      "endTime": "2026-03-06 14:44",
+      "duration": 9.791033333333333,
+      "efficiency": 5
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-06 15:02",
+      "endTime": "2026-03-06 15:28",
+      "duration": 26.4212,
+      "efficiency": 2
+    },
+    {
+      "theme": "反思&记录&总结",
+      "startTime": "2026-03-06 15:28",
+      "endTime": "2026-03-06 16:38",
+      "duration": 70.15115,
+      "efficiency": 5
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-06 16:38",
+      "endTime": "2026-03-06 18:40",
+      "duration": 122.38483333333333,
+      "efficiency": 2
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-06 19:42",
+      "endTime": "2026-03-06 21:05",
+      "duration": 83.35115,
+      "efficiency": 2
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-06 21:26",
+      "endTime": "2026-03-06 22:41",
+      "duration": 75.17545,
+      "efficiency": 3
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-07 09:19",
+      "endTime": "2026-03-07 10:42",
+      "duration": 83.30046666666667,
+      "efficiency": 1
+    },
+    {
+      "theme": "投资",
+      "startTime": "2026-03-07 10:42",
+      "endTime": "2026-03-07 10:52",
+      "duration": 10.262416666666667,
+      "efficiency": 5
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-07 10:52",
+      "endTime": "2026-03-07 11:28",
+      "duration": 36.725116666666665,
+      "efficiency": 2
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-07 14:34",
+      "endTime": "2026-03-07 15:46",
+      "duration": 72.7262,
+      "efficiency": 2
+    },
+    {
+      "theme": "运动",
+      "startTime": "2026-03-07 16:09",
+      "endTime": "2026-03-07 17:01",
+      "duration": 52.43086666666667,
+      "efficiency": 5
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-07 19:40",
+      "endTime": "2026-03-07 20:10",
+      "duration": 30.71685,
+      "efficiency": 2
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-07 20:10",
+      "endTime": "2026-03-07 21:23",
+      "duration": 73.15575,
+      "efficiency": 3
+    },
+    {
+      "theme": "完善监督系统",
+      "startTime": "2026-03-07 21:35",
+      "endTime": "2026-03-07 22:30",
+      "duration": 55.31183333333333,
+      "efficiency": 2
+    },
+    {
+      "theme": "考研准备",
+      "startTime": "2026-03-08 09:12",
+      "endTime": "2026-03-08 11:16",
+      "duration": 124.30063333333334,
+      "efficiency": 3
     }
   ]
 }
