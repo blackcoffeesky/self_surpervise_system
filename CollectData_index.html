@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Activity Tracker A++</title>
+<title>活动记录 A++ · 图表修复</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -13,34 +13,71 @@ body {
     padding: 20px;
     max-width: 520px;
     margin: auto;
+    background: #f5f9ff;
 }
 
-h2 { text-align:center; }
+h2 { text-align:center; color:#1e3c5c; }
 
 button {
     width: 100%;
     padding: 14px;
     margin: 8px 0;
     font-size: 16px;
+    border: none;
+    border-radius: 40px;
+    background: #e3ebf6;
+    cursor: pointer;
+    transition: 0.15s;
+    font-weight: 500;
 }
+button:hover { background: #c9d9ec; }
 
 select {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-top: 5px;
     font-size: 16px;
+    border-radius: 40px;
+    border: 1px solid #bcccdc;
+    background: white;
 }
 
 .current {
-    padding: 12px;
-    background: #f2f2f2;
-    margin: 12px 0;
+    padding: 18px;
+    background: #d9e9ff;
+    margin: 20px 0;
+    border-radius: 28px;
+    font-weight: 500;
+    white-space: pre-line;
+    box-shadow: 0 4px 8px rgba(0,40,80,0.08);
 }
 
-.smallBtn { background:#eee; }
-.danger { background:#ffdddd; }
+.smallBtn { background:#dee7f2; }
+.danger { background:#ffe0e0; color:#aa2222; }
+.danger:hover { background:#ffc9c9; }
 
-.statBox { margin-top:25px; }
+.statBox { 
+    margin-top: 30px; 
+    background: white; 
+    padding: 20px 18px; 
+    border-radius: 32px; 
+    box-shadow: 0 8px 24px rgba(0,20,50,0.05);
+}
+
+.statBox p {
+    font-size: 1.1rem;
+    margin: 10px 0;
+    color: #1e3b58;
+}
+
+/* 修复图表尺寸：固定高度，宽度自适应 */
+canvas {
+    width: 100% !important;
+    height: 220px !important;   /* 固定合适高度，避免过大过小 */
+    margin-top: 15px;
+    border-radius: 16px;
+    background: #fafdff;
+}
 
 .modal {
     position: fixed;
@@ -50,24 +87,69 @@ select {
     display:none;
     justify-content:center;
     align-items:center;
+    z-index: 1000;
 }
 
 .modalContent {
     background:white;
-    padding:20px;
-    width:80%;
-    border-radius:10px;
+    padding: 28px 20px;
+    width: 90%;
+    max-width: 380px;
+    border-radius: 36px;
     text-align:center;
+    box-shadow: 0 25px 40px rgba(0,10,30,0.2);
 }
 
-.modalContent button {
-    width:100%;
+.modalContent h3 {
+    margin-top: 0;
+    color: #1e3c5c;
+    font-weight: 600;
+}
+
+.time-picker {
+    margin: 20px 0 18px;
+    text-align: left;
+}
+
+.time-picker label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #2b4b6f;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.time-picker input {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #b9cee8;
+    border-radius: 50px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background: #f2f8ff;
+}
+
+.modalContent .efficiency-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 18px 0;
+}
+.modalContent .efficiency-grid button {
+    margin: 0;
+    background: #eef4fb;
+    border-radius: 40px;
+    padding: 12px 5px;
+    font-size: 0.95rem;
+}
+.modalContent .efficiency-grid button:hover {
+    background: #d6e3f5;
 }
 </style>
 </head>
 <body>
 
-<h2>活动记录系统 A++</h2>
+<h2>⏱️ 活动记录 A++</h2>
 
 <div class="current" id="currentStatus">
 当前无活动
@@ -75,55 +157,70 @@ select {
 
 <label>选择主题：</label>
 <select id="subthemeSelect">
-<option value="">--选择--</option>
+<option value="">-- 选择主题 --</option>
 <option>嵌入式与机器视觉</option>
 <option>考研准备</option>
 <option>完善监督系统</option>
 <option>强化学习&毕业设计</option>
+<option>上课</option>
 <option>运动</option>
 <option>投资</option>
 <option>反思&记录&总结</option>
 </select>
 
-<button onclick="startActivity()">开始活动</button>
-<button onclick="endActivity()">结束活动</button>
-<button onclick="switchActivity()">切换活动</button>
+<button onclick="startActivity()">▶ 开始活动</button>
+<button onclick="endActivity()">⏹️ 结束活动</button>
+<button onclick="switchActivity()">🔄 切换活动</button>
 
-<button onclick="clearCurrent()" class="smallBtn">清除当前活动</button>
-<button onclick="clearAll()" class="danger">清空所有数据</button>
-<button onclick="exportData()">导出数据</button>
+<button onclick="clearCurrent()" class="smallBtn">🧹 清除当前活动</button>
+<button onclick="clearAll()" class="danger">⚠️ 清空所有数据</button>
+<button onclick="exportData()">📤 导出数据</button>
 
 <div class="statBox">
-<h3>统计</h3>
+<h3>📊 每日时长统计</h3>
 <p id="todayStat">今日总时长：0 分钟</p>
 <p id="totalStat">累计总时长：0 分钟</p>
 <canvas id="dailyChart"></canvas>
+<p id="noDataHint" style="font-size:0.9rem; color:#888; display:none;">暂无数据，开始记录吧</p>
 </div>
 
-<!-- 效率弹窗 -->
+<!-- 效率 + 可调结束时间弹窗 -->
 <div class="modal" id="effModal">
 <div class="modalContent">
-<h3>选择效率</h3>
-<button onclick="selectEfficiency(0)">低</button>
-<button onclick="selectEfficiency(1)">偏低</button>
-<button onclick="selectEfficiency(2)">正常</button>
-<button onclick="selectEfficiency(3)">高</button>
-<button onclick="selectEfficiency(4)">极高</button>
-<button onclick="selectEfficiency(5)">无</button>
+<h3>⚡ 选择效率 & 结束时间</h3>
+
+<div class="time-picker">
+    <label>⌛ 结束时间 (可修改)</label>
+    <input type="datetime-local" id="endTimePicker">
+    <p style="font-size:0.8rem; color:#556b82; margin:5px 0 0;">可修改为实际结束时间</p>
+</div>
+
+<div class="efficiency-grid">
+    <button onclick="selectEfficiency(0)">低 (0)</button>
+    <button onclick="selectEfficiency(1)">偏低 (1)</button>
+    <button onclick="selectEfficiency(2)">正常 (2)</button>
+    <button onclick="selectEfficiency(3)">高 (3)</button>
+    <button onclick="selectEfficiency(4)">极高 (4)</button>
+    <button onclick="selectEfficiency(5)">无 (5)</button>
+</div>
+
+<button onclick="closeModal(false)" style="background:#e2e2e2;">取消</button>
 </div>
 </div>
 
 <script>
+// --- 数据与状态 ---
 let currentActivity = JSON.parse(localStorage.getItem("currentActivity"));
 let records = JSON.parse(localStorage.getItem("records")) || [];
 
-let pendingAction = null;
+let pendingAction = null;   // "end" 或 {type:"switch", newTheme}
 
 function saveState(){
     localStorage.setItem("currentActivity", JSON.stringify(currentActivity));
     localStorage.setItem("records", JSON.stringify(records));
 }
 
+// 格式化时间为 "YYYY-MM-DD HH:MM"
 function formatTime(date){
     const y = date.getFullYear();
     const m = String(date.getMonth()+1).padStart(2,'0');
@@ -131,6 +228,22 @@ function formatTime(date){
     const h = String(date.getHours()).padStart(2,'0');
     const min = String(date.getMinutes()).padStart(2,'0');
     return `${y}-${m}-${d} ${h}:${min}`;
+}
+
+// Date对象 → datetime-local 字符串 (YYYY-MM-DDTHH:MM)
+function toDateTimeLocalString(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const d = String(date.getDate()).padStart(2,'0');
+    const h = String(date.getHours()).padStart(2,'0');
+    const min = String(date.getMinutes()).padStart(2,'0');
+    return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+// datetime-local 字符串 → 存储格式 (YYYY-MM-DD HH:MM)
+function fromPickerToStorage(pickerValue) {
+    if (!pickerValue) return null;
+    return pickerValue.replace("T", " ");
 }
 
 function parseTime(str){
@@ -147,6 +260,7 @@ function updateStatus(){
     }
 }
 
+// --- 活动操作 ---
 function startActivity(){
     if(currentActivity){
         alert("已有进行中的活动");
@@ -185,7 +299,7 @@ function switchActivity(){
     }
 
     if(!currentActivity){
-        startActivity();
+        startActivity();  // 没有活动则直接开始
         return;
     }
 
@@ -193,32 +307,56 @@ function switchActivity(){
     openModal();
 }
 
+// --- 弹窗控制 ---
 function openModal(){
-    document.getElementById("effModal").style.display="flex";
+    const picker = document.getElementById("endTimePicker");
+    picker.value = toDateTimeLocalString(new Date()); // 默认当前时刻
+    document.getElementById("effModal").style.display = "flex";
 }
 
-function closeModal(){
-    document.getElementById("effModal").style.display="none";
+function closeModal(keepPending = false){
+    document.getElementById("effModal").style.display = "none";
+    if (!keepPending) {
+        pendingAction = null;  
+    }
 }
 
 function selectEfficiency(value){
-    closeModal();
+    closeModal(true);
 
-    const endTime = new Date();
-    const startTime = parseTime(currentActivity.startTime);
-    const durationMin = (endTime - startTime)/60000;
+    // 获取用户选择的结束时间（若无效则用当前时间）
+    const picker = document.getElementById("endTimePicker");
+    let endTimeStr = picker.value ? fromPickerToStorage(picker.value) : null;
+    if (!endTimeStr) {
+        endTimeStr = formatTime(new Date());
+    }
 
+    const startTimeObj = parseTime(currentActivity.startTime);
+    const endTimeObj = parseTime(endTimeStr);
+
+    // 结束时间不能早于开始时间
+    if (endTimeObj < startTimeObj) {
+        alert("结束时间早于开始时间，已自动调整为开始时间后1分钟");
+        const adjustedEnd = new Date(startTimeObj.getTime() + 60000);
+        endTimeStr = formatTime(adjustedEnd);
+    }
+
+    const durationMin = (parseTime(endTimeStr) - startTimeObj) / 60000;
+
+    // 保存记录
     records.push({
         theme: currentActivity.theme,
         startTime: currentActivity.startTime,
-        endTime: formatTime(endTime),
+        endTime: endTimeStr,
         duration: durationMin,
         efficiency: value
     });
 
-    if(pendingAction === "end"){
+    // 根据操作更新当前活动
+    if (pendingAction === "end") {
         currentActivity = null;
-    }else if(pendingAction.type === "switch"){
+    } else if (pendingAction && pendingAction.type === "switch") {
+        // 切换：新活动从此刻开始
         currentActivity = {
             theme: pendingAction.newTheme,
             startTime: formatTime(new Date())
@@ -228,9 +366,10 @@ function selectEfficiency(value){
     pendingAction = null;
     saveState();
     updateStatus();
-    updateStats();
+    updateStats();  // 刷新图表与统计
 }
 
+// --- 数据管理 ---
 function clearCurrent(){
     if(confirm("确定清除当前活动？")){
         currentActivity = null;
@@ -256,73 +395,90 @@ function exportData(){
         records: records
     };
 
-    const blob = new Blob(
-        [JSON.stringify(exportData,null,2)],
-        {type:"application/json"}
-    );
-
+    const blob = new Blob([JSON.stringify(exportData,null,2)], {type:"application/json"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href=url;
-    a.download="activity_export.json";
+    a.href = url;
+    a.download = "activity_export.json";
     a.click();
     URL.revokeObjectURL(url);
 }
 
+// --- 统计与图表 (修复尺寸 & 空数据提示) ---
 function updateStats(){
     let today = new Date().toDateString();
     let todaySum = 0;
     let totalSum = 0;
     let dailyMap = {};
 
-    records.forEach(r=>{
+    records.forEach(r => {
         let date = new Date(r.startTime);
         let dayStr = date.toDateString();
 
         totalSum += r.duration;
-        if(dayStr === today){
-            todaySum += r.duration;
-        }
+        if(dayStr === today) todaySum += r.duration;
 
-        if(!dailyMap[dayStr]) dailyMap[dayStr]=0;
-        dailyMap[dayStr]+=r.duration;
+        dailyMap[dayStr] = (dailyMap[dayStr] || 0) + r.duration;
     });
 
-    document.getElementById("todayStat").innerText =
-    "今日总时长：" + todaySum.toFixed(1) + " 分钟";
-
-    document.getElementById("totalStat").innerText =
-    "累计总时长：" + totalSum.toFixed(1) + " 分钟";
+    document.getElementById("todayStat").innerText = "今日总时长：" + todaySum.toFixed(1) + " 分钟";
+    document.getElementById("totalStat").innerText = "累计总时长：" + totalSum.toFixed(1) + " 分钟";
 
     drawChart(dailyMap);
 }
 
-let chart;
+let chart = null;
 
 function drawChart(dailyMap){
-    const ctx = document.getElementById("dailyChart");
+    const ctx = document.getElementById("dailyChart").getContext("2d");
+    const noDataHint = document.getElementById("noDataHint");
 
-    let labels = Object.keys(dailyMap);
-    let data = Object.values(dailyMap);
+    const labels = Object.keys(dailyMap);
+    const data = Object.values(dailyMap);
 
-    if(chart) chart.destroy();
+    // 无数据时显示提示，清空画布
+    if (labels.length === 0) {
+        if (chart) { chart.destroy(); chart = null; }
+        noDataHint.style.display = "block";
+        // 清除画布 (避免残留)
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        return;
+    } else {
+        noDataHint.style.display = "none";
+    }
 
-    chart = new Chart(ctx,{
-        type:'bar',
-        data:{
-            labels:labels,
-            datasets:[{
-                label:'每日总分钟',
-                data:data
+    // 如果有旧图表先销毁
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '每日总分钟',
+                data: data,
+                backgroundColor: '#4f7eb3',
+                borderRadius: 8,
+                barPercentage: 0.65
             }]
         },
-        options:{
-            responsive:true,
-            scales:{ y:{ beginAtZero:true } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,  // 配合CSS固定高度
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { 
+                    beginAtZero: true,
+                    grid: { color: '#e0e9f2' }
+                }
+            }
         }
     });
 }
 
+// 页面启动
 updateStatus();
 updateStats();
 </script>
