@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>活动记录 A++ · 图表修复</title>
+<title>活动记录 A++ · 修改功能</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -70,10 +70,9 @@ select {
     color: #1e3b58;
 }
 
-/* 修复图表尺寸：固定高度，宽度自适应 */
 canvas {
     width: 100% !important;
-    height: 220px !important;   /* 固定合适高度，避免过大过小 */
+    height: 220px !important;
     margin-top: 15px;
     border-radius: 16px;
     background: #fafdff;
@@ -119,7 +118,7 @@ canvas {
     margin-bottom: 6px;
 }
 
-.time-picker input {
+.time-picker input, .modalContent select {
     width: 100%;
     padding: 14px;
     border: 1px solid #b9cee8;
@@ -144,6 +143,16 @@ canvas {
 }
 .modalContent .efficiency-grid button:hover {
     background: #d6e3f5;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+.button-group button {
+    margin: 0;
+    flex: 1;
 }
 </style>
 </head>
@@ -171,6 +180,7 @@ canvas {
 <button onclick="startActivity()">▶ 开始活动</button>
 <button onclick="endActivity()">⏹️ 结束活动</button>
 <button onclick="switchActivity()">🔄 切换活动</button>
+<button onclick="modifyLastActivity()">✏️ 修改最新活动</button>
 
 <button onclick="clearCurrent()" class="smallBtn">🧹 清除当前活动</button>
 <button onclick="clearAll()" class="danger">⚠️ 清空所有数据</button>
@@ -184,16 +194,10 @@ canvas {
 <p id="noDataHint" style="font-size:0.9rem; color:#888; display:none;">暂无数据，开始记录吧</p>
 </div>
 
-<!-- 效率 + 可调结束时间弹窗 -->
+<!-- 效率弹窗 (无时间选择) -->
 <div class="modal" id="effModal">
 <div class="modalContent">
-<h3>⚡ 选择效率 & 结束时间</h3>
-
-<div class="time-picker">
-    <label>⌛ 结束时间 (可修改)</label>
-    <input type="datetime-local" id="endTimePicker">
-    <p style="font-size:0.8rem; color:#556b82; margin:5px 0 0;">可修改为实际结束时间</p>
-</div>
+<h3>⚡ 选择效率</h3>
 
 <div class="efficiency-grid">
     <button onclick="selectEfficiency(0)">低 (0)</button>
@@ -205,6 +209,55 @@ canvas {
 </div>
 
 <button onclick="closeModal(false)" style="background:#e2e2e2;">取消</button>
+</div>
+</div>
+
+<!-- 修改活动弹窗 -->
+<div class="modal" id="modifyModal">
+<div class="modalContent">
+<h3>✏️ 修改最新活动</h3>
+
+<div class="time-picker">
+    <label>主题</label>
+    <select id="modifyTheme">
+        <option>嵌入式与机器视觉</option>
+        <option>考研准备</option>
+        <option>完善监督系统</option>
+        <option>强化学习&毕业设计</option>
+        <option>上课</option>
+        <option>运动</option>
+        <option>投资</option>
+        <option>反思&记录&总结</option>
+    </select>
+</div>
+
+<div class="time-picker">
+    <label>开始时间</label>
+    <input type="datetime-local" id="modifyStart">
+</div>
+
+<div class="time-picker">
+    <label>结束时间</label>
+    <input type="datetime-local" id="modifyEnd">
+</div>
+
+<div class="time-picker">
+    <label>效率</label>
+    <select id="modifyEfficiency">
+        <option value="0">低 (0)</option>
+        <option value="1">偏低 (1)</option>
+        <option value="2">正常 (2)</option>
+        <option value="3">高 (3)</option>
+        <option value="4">极高 (4)</option>
+        <option value="5">无 (5)</option>
+    </select>
+</div>
+
+<div class="button-group">
+    <button onclick="saveModify()" style="background:#4f7eb3; color:white;">保存</button>
+    <button onclick="deleteLastActivity()" class="danger">删除</button>
+</div>
+<button onclick="closeModifyModal()" style="background:#e2e2e2; margin-top:10px;">取消</button>
 </div>
 </div>
 
@@ -244,6 +297,12 @@ function toDateTimeLocalString(date) {
 function fromPickerToStorage(pickerValue) {
     if (!pickerValue) return null;
     return pickerValue.replace("T", " ");
+}
+
+// 存储格式 → datetime-local 字符串
+function fromStorageToPicker(storageValue) {
+    if (!storageValue) return "";
+    return storageValue.replace(" ", "T");
 }
 
 function parseTime(str){
@@ -307,10 +366,8 @@ function switchActivity(){
     openModal();
 }
 
-// --- 弹窗控制 ---
+// --- 弹窗控制 (效率) ---
 function openModal(){
-    const picker = document.getElementById("endTimePicker");
-    picker.value = toDateTimeLocalString(new Date()); // 默认当前时刻
     document.getElementById("effModal").style.display = "flex";
 }
 
@@ -324,12 +381,8 @@ function closeModal(keepPending = false){
 function selectEfficiency(value){
     closeModal(true);
 
-    // 获取用户选择的结束时间（若无效则用当前时间）
-    const picker = document.getElementById("endTimePicker");
-    let endTimeStr = picker.value ? fromPickerToStorage(picker.value) : null;
-    if (!endTimeStr) {
-        endTimeStr = formatTime(new Date());
-    }
+    // 结束时间就是当前时间（不再从弹窗获取）
+    let endTimeStr = formatTime(new Date());
 
     const startTimeObj = parseTime(currentActivity.startTime);
     const endTimeObj = parseTime(endTimeStr);
@@ -366,7 +419,80 @@ function selectEfficiency(value){
     pendingAction = null;
     saveState();
     updateStatus();
-    updateStats();  // 刷新图表与统计
+    updateStats();
+}
+
+// --- 修改最新活动功能 ---
+function modifyLastActivity() {
+    if (records.length === 0) {
+        alert("没有可修改的记录");
+        return;
+    }
+
+    const last = records[records.length - 1];
+    
+    // 填充弹窗
+    document.getElementById("modifyTheme").value = last.theme;
+    document.getElementById("modifyStart").value = fromStorageToPicker(last.startTime);
+    document.getElementById("modifyEnd").value = fromStorageToPicker(last.endTime);
+    document.getElementById("modifyEfficiency").value = last.efficiency;
+    
+    document.getElementById("modifyModal").style.display = "flex";
+}
+
+function closeModifyModal() {
+    document.getElementById("modifyModal").style.display = "none";
+}
+
+function saveModify() {
+    if (records.length === 0) return;
+    
+    const newTheme = document.getElementById("modifyTheme").value;
+    const newStart = document.getElementById("modifyStart").value;
+    const newEnd = document.getElementById("modifyEnd").value;
+    const newEfficiency = parseInt(document.getElementById("modifyEfficiency").value);
+    
+    if (!newTheme || !newStart || !newEnd) {
+        alert("请填写完整信息");
+        return;
+    }
+    
+    const startStr = fromPickerToStorage(newStart);
+    const endStr = fromPickerToStorage(newEnd);
+    const startObj = parseTime(startStr);
+    const endObj = parseTime(endStr);
+    
+    if (endObj < startObj) {
+        alert("结束时间不能早于开始时间");
+        return;
+    }
+    
+    const durationMin = (endObj - startObj) / 60000;
+    
+    // 修改最后一条记录
+    const lastIndex = records.length - 1;
+    records[lastIndex] = {
+        theme: newTheme,
+        startTime: startStr,
+        endTime: endStr,
+        duration: durationMin,
+        efficiency: newEfficiency
+    };
+    
+    closeModifyModal();
+    saveState();
+    updateStats();
+}
+
+function deleteLastActivity() {
+    if (records.length === 0) return;
+    
+    if (confirm("确定删除最新这条记录？")) {
+        records.pop();  // 删除最后一条
+        closeModifyModal();
+        saveState();
+        updateStats();
+    }
 }
 
 // --- 数据管理 ---
@@ -404,7 +530,7 @@ function exportData(){
     URL.revokeObjectURL(url);
 }
 
-// --- 统计与图表 (修复尺寸 & 空数据提示) ---
+// --- 统计与图表 ---
 function updateStats(){
     let today = new Date().toDateString();
     let todaySum = 0;
@@ -436,18 +562,15 @@ function drawChart(dailyMap){
     const labels = Object.keys(dailyMap);
     const data = Object.values(dailyMap);
 
-    // 无数据时显示提示，清空画布
     if (labels.length === 0) {
         if (chart) { chart.destroy(); chart = null; }
         noDataHint.style.display = "block";
-        // 清除画布 (避免残留)
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         return;
     } else {
         noDataHint.style.display = "none";
     }
 
-    // 如果有旧图表先销毁
     if (chart) chart.destroy();
 
     chart = new Chart(ctx, {
@@ -464,16 +587,9 @@ function drawChart(dailyMap){
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,  // 配合CSS固定高度
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                y: { 
-                    beginAtZero: true,
-                    grid: { color: '#e0e9f2' }
-                }
-            }
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: '#e0e9f2' } } }
         }
     });
 }

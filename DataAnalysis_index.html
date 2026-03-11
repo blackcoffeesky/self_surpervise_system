@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>活动分析 · 简洁版</title>
+<title>活动分析 · 主题筛选版</title>
 <!-- 只保留核心库 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -72,6 +72,33 @@ input[type="file"]{
 }
 .stat-cell strong{display: block; font-size: 1.4rem; font-weight: 600; color: #0b253c;}
 
+/* 主题选择器 */
+.theme-selector {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+.theme-selector select {
+    min-width: 250px;
+    padding: 8px 12px;
+    border-radius: 30px;
+    border: 1px solid #dde7f0;
+    background: white;
+    font-size: 0.95rem;
+}
+.theme-selector span {
+    color: #1e3c72;
+    font-weight: 500;
+}
+.theme-badge {
+    background: #e6edf6;
+    padding: 4px 12px;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    color: #1e3c72;
+}
+
 /* 图表网格 — 两列布局 (清爽整齐) */
 .chart-grid{
     display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.8rem;
@@ -106,11 +133,11 @@ canvas{
 </head>
 <body>
 
-<h2>活动数据 · 精简仪表盘</h2>
+<h2>活动数据 · 主题筛选版</h2>
 
-<!-- 模块 A: 文件上传 + 时间过滤 (整合在一行) -->
+<!-- 模块 A: 文件上传 + 时间过滤 + 主题选择 -->
 <div class="card" style="padding: 1.2rem 1.8rem;">
-    <div class="flex-row">
+    <div class="flex-row" style="margin-bottom: 15px;">
         <input type="file" id="dbFile" accept=".db,.sqlite,.sqlite3">
         <div class="date-group">
             <span style="color:#1e3c72;">📅</span>
@@ -120,6 +147,18 @@ canvas{
             <button class="btn" onclick="renderDashboard()">刷新</button>
         </div>
     </div>
+    
+    <!-- 新增：主题多选筛选器 -->
+    <div class="theme-selector">
+        <span>🎯 主题筛选：</span>
+        <select id="themeFilter" multiple size="4" style="width: 100%; max-width: 400px;">
+            <!-- 选项会通过JavaScript动态加载 -->
+        </select>
+        <span class="theme-badge" id="selectedCount">已选 0 个主题</span>
+        <button class="btn" onclick="selectAllThemes()" style="padding: 0.4rem 1.2rem;">全选</button>
+        <button class="btn" onclick="selectTop5Themes()" style="padding: 0.4rem 1.2rem;">前5个</button>
+    </div>
+    <p style="font-size:0.85rem; color:#64748b; margin-top:8px;">按住 Ctrl 键多选，四个图表将只显示选中的主题</p>
 </div>
 
 <!-- 模块 B: 统一尺寸滑块 (全局控制) 简约收纳 -->
@@ -175,10 +214,12 @@ canvas{
 </div>
 
 <script>
-// --- 精简模块化：只保留必要逻辑，所有图表共用全局尺寸 ---
+// --- 精简模块化：保留必要逻辑 + 新增主题筛选 ---
 let db;
 let charts = {};
 let SQL;
+let allThemes = []; // 存储所有主题名称
+let currentRows = []; // 存储当前原始数据
 
 // 初始化sql.js
 initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` })
@@ -196,11 +237,9 @@ function handleFileUpload(e) {
         try {
             const uInt8Array = new Uint8Array(reader.result);
             db = new SQL.Database(uInt8Array);
-            // 快速验证表存在
-            // const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('Activity','SubTheme')");
-            // if (tables.length < 2) { alert('数据库需要包含 Activity 和 SubTheme 表'); return; }
             initDateRange();
-            setupGlobalSizeControls(); // 绑定全局滑块 (不再需要每个图表的单独滑块)
+            loadAllThemes(); // 加载所有主题供筛选
+            setupGlobalSizeControls();
             renderDashboard();
         } catch (err) { alert('加载失败: ' + err.message); }
     };
@@ -218,6 +257,69 @@ function initDateRange() {
     } catch (e) { console.warn("日期初始化失败", e); }
 }
 
+// 加载所有主题到筛选框
+function loadAllThemes() {
+    try {
+        const res = db.exec("SELECT DISTINCT name FROM SubTheme ORDER BY name");
+        if (res.length) {
+            allThemes = res[0].values.map(row => row[0]);
+        } else {
+            allThemes = [];
+        }
+        
+        const select = document.getElementById("themeFilter");
+        select.innerHTML = '';
+        allThemes.forEach(theme => {
+            const option = document.createElement("option");
+            option.value = theme;
+            option.textContent = theme;
+            select.appendChild(option);
+        });
+        
+        // 默认选中前5个
+        selectTop5Themes();
+    } catch (e) {
+        console.warn("加载主题失败", e);
+        allThemes = [];
+    }
+}
+
+// 全选所有主题
+function selectAllThemes() {
+    const select = document.getElementById("themeFilter");
+    Array.from(select.options).forEach(option => option.selected = true);
+    document.getElementById("selectedCount").textContent = `已选 ${select.selectedOptions.length} 个主题`;
+    renderDashboard(); // 重新渲染
+}
+
+// 选中前5个主题
+function selectTop5Themes() {
+    const select = document.getElementById("themeFilter");
+    Array.from(select.options).forEach((option, index) => {
+        option.selected = index < 5;
+    });
+    document.getElementById("selectedCount").textContent = `已选 ${select.selectedOptions.length} 个主题`;
+    renderDashboard(); // 重新渲染
+}
+
+// 获取当前选中的主题列表
+function getSelectedThemes() {
+    const select = document.getElementById("themeFilter");
+    return Array.from(select.selectedOptions).map(opt => opt.value);
+}
+
+// 更新选中主题计数
+function updateSelectedCount() {
+    const select = document.getElementById("themeFilter");
+    document.getElementById("selectedCount").textContent = `已选 ${select.selectedOptions.length} 个主题`;
+}
+
+// 监听主题选择变化
+document.getElementById("themeFilter").addEventListener("change", function() {
+    updateSelectedCount();
+    renderDashboard();
+});
+
 // 全局滑块 —— 同时更新所有canvas尺寸，并调用resize
 function setupGlobalSizeControls() {
     const heightSlider = document.getElementById('globalHeight');
@@ -228,12 +330,10 @@ function setupGlobalSizeControls() {
     function applySizeToAllCharts() {
         const h = heightSlider.value + 'px';
         const w = widthSlider.value + '%';
-        // 更新所有canvas样式
         document.querySelectorAll('canvas').forEach(canvas => {
             canvas.style.height = h;
             canvas.style.width = w;
         });
-        // 通知每个chart.js实例resize (防抖)
         if (window.resizeTimer) clearTimeout(window.resizeTimer);
         window.resizeTimer = setTimeout(() => {
             Object.values(charts).forEach(c => c?.resize());
@@ -249,7 +349,6 @@ function setupGlobalSizeControls() {
         applySizeToAllCharts();
     });
     
-    // 初始同步
     heightSlider.value = 250; heightSpan.textContent = '250px';
     widthSlider.value = 100; widthSpan.textContent = '100%';
     applySizeToAllCharts();
@@ -260,7 +359,6 @@ function resetChartSizes() {
     document.getElementById('globalHeightValue').textContent = '250px';
     document.getElementById('globalWidth').value = 100;
     document.getElementById('globalWidthValue').textContent = '100%';
-    // 手动触发尺寸更新
     document.querySelectorAll('canvas').forEach(c => {
         c.style.height = '250px';
         c.style.width = '100%';
@@ -284,16 +382,27 @@ function renderDashboard() {
         `);
         if (!result.length) return alert('该区间无数据');
         
-        const rows = result[0].values.map(r => ({
+        currentRows = result[0].values.map(r => ({
             start: r[0], end: r[1], efficiency: r[2], theme: r[3]
         }));
         
+        // 根据选中的主题过滤数据
+        const selectedThemes = getSelectedThemes();
+        const filteredRows = selectedThemes.length > 0 
+            ? currentRows.filter(row => selectedThemes.includes(row.theme))
+            : currentRows; // 如果没选任何主题，显示所有
+        
+        if (filteredRows.length === 0 && selectedThemes.length > 0) {
+            alert('所选主题在该时间范围内无数据');
+            return;
+        }
+        
         // 依次更新
-        computeStats(rows);
-        renderThemeDurationLine(rows);
-        renderEfficiencyTrend(rows);
-        renderThemePie(rows);
-        renderEfficiencyBar(rows);
+        computeStats(filteredRows);
+        renderThemeDurationLine(filteredRows);
+        renderEfficiencyTrend(filteredRows);
+        renderThemePie(filteredRows);
+        renderEfficiencyBar(filteredRows);
     } catch (err) { alert('渲染出错: ' + err.message); }
 }
 
@@ -313,7 +422,7 @@ function computeStats(rows) {
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); charts[id] = null; } }
 
-// --- 四个图表渲染 (保留原算法，极简) ---
+// --- 四个图表渲染 (已集成主题筛选) ---
 function renderThemeDurationLine(rows) {
     const map = {}, days = [...new Set(rows.map(r => r.start.slice(0,10)))].sort();
     const themes = [...new Set(rows.map(r => r.theme))];
@@ -359,13 +468,25 @@ function renderThemePie(rows) {
     });
     destroyChart('themePie');
     const colors = ['#3b7fbd','#56b4a2','#e09f3e','#9e5f8b','#cf6f4a','#5171a5'];
+    // 如果主题数量超过颜色数组，循环使用颜色
+    const themeKeys = Object.keys(themeTotal);
+    const bgColors = themeKeys.map((_, i) => colors[i % colors.length]);
+    
     charts.themePie = new Chart('themePie', {
         type: 'pie',
-        data: { labels: Object.keys(themeTotal), datasets: [{
-            data: Object.values(themeTotal), backgroundColor: colors,
-            borderWidth: 0
-        }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        data: { 
+            labels: themeKeys, 
+            datasets: [{
+                data: Object.values(themeTotal), 
+                backgroundColor: bgColors,
+                borderWidth: 0
+            }] 
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false, 
+            plugins: { legend: { position: 'right' } } 
+        }
     });
 }
 
